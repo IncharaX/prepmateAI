@@ -1,14 +1,17 @@
 const express = require('express');
 const router = express.Router();
+
+// ✅ FIXED IMPORTS
 const interviewController = require('../controllers/interviewController');
-const authMiddleware = require('../middleware/authMiddleware');
+const { verifyFirebaseToken } = require('../middleware/authMiddleware');
 
 // Protected routes
-router.post('/start', authMiddleware, interviewController.startInterview);
-router.post('/submit-answer', authMiddleware, interviewController.submitAnswer);
-router.post('/complete', authMiddleware, interviewController.completeInterview);
-router.get('/history', authMiddleware, interviewController.getInterviewHistory);
-router.get('/:interviewId', authMiddleware, interviewController.getInterviewDetails);
-router.get('/stats/dashboard', authMiddleware, interviewController.getDashboardStats);
+router.post('/start', verifyFirebaseToken, interviewController.startInterview);
+router.post('/submit-answer', verifyFirebaseToken, interviewController.submitAnswer);
+router.post('/complete', verifyFirebaseToken, interviewController.completeInterview);
+
+router.get('/history', verifyFirebaseToken, interviewController.getInterviewHistory);
+router.get('/stats/dashboard', verifyFirebaseToken, interviewController.getDashboardStats);
+router.get('/:interviewId', verifyFirebaseToken, interviewController.getInterviewDetails);
 
 module.exports = router;

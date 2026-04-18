@@ -22,6 +22,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+    },
     domain: {
       type: String,
       enum: ['Software Engineering', 'Marketing', 'Finance', 'HR'],
@@ -31,6 +36,13 @@ const userSchema = new mongoose.Schema(
       fileName: String,
       fileUrl: String,
       uploadedAt: Date,
+    },
+    resumeAnalysis: {
+      extractedSkills: [String],
+      relevantSkills: [String],
+      missingSkills: [String],
+      overallScore: { type: Number, min: 0, max: 100 },
+      updatedAt: Date,
     },
     interviewReadinessScore: {
       type: Number,
@@ -53,6 +65,21 @@ const userSchema = new mongoose.Schema(
       communicationScore: { type: Number, default: 0 },
       confidenceScore: { type: Number, default: 0 },
     },
+    skillsGap: [
+      {
+        skill: String,
+        proficiency: { type: String, enum: ['basic', 'intermediate', 'advanced'] },
+        priority: { type: String, enum: ['low', 'medium', 'high'] },
+      },
+    ],
+    lastInterviewDate: Date,
+    loginHistory: [
+      {
+        timestamp: { type: Date, default: Date.now },
+        ipAddress: String,
+        userAgent: String,
+      },
+    ],
     createdAt: {
       type: Date,
       default: Date.now,
@@ -65,4 +92,9 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Index for efficient queries
+userSchema.index({ email: 1, createdAt: -1 });
+userSchema.index({ role: 1 });
+
 module.exports = mongoose.model('User', userSchema);
+

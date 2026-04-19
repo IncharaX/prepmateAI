@@ -20,13 +20,6 @@ apiService.interceptors.request.use(
         config.headers.Authorization = `Bearer ${sessionToken}`;
         return config;
       }
-
-      // Fall back to Firebase ID token if no session token
-      const { auth } = await import('../config/firebase');
-      if (auth.currentUser) {
-        const firebaseToken = await auth.currentUser.getIdToken();
-        config.headers.Authorization = `Bearer ${firebaseToken}`;
-      }
     } catch (error) {
       console.error('Error setting auth token:', error);
     }

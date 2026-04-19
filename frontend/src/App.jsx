@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Interview from './pages/Interview';
 import Results from './pages/Results';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -21,6 +22,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
             <Route
               path="/dashboard"

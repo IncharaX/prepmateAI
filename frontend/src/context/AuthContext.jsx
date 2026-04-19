@@ -1,7 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { auth } from '../config/firebase';
 import apiService from '../services/apiService';
 
 export const AuthContext = createContext();
@@ -35,77 +33,48 @@ export const AuthProvider = ({ children }) => {
         });
     }
 
-    // Monitor Firebase auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-    
-      try {
-        setLoading(true);
-
-        if (firebaseUser) {
-          setUser(firebaseUser);
-
-          // Get Firebase ID token and send it to backend to get JWT session token
-          const firebaseToken = await firebaseUser.getIdToken();
-
-          try {
-            // Register/Login user with Firebase token
-            const response = await apiService.post('/auth/firebase', {
-              firebaseToken,
-              displayName: firebaseUser.displayName,
-              photoURL: firebaseUser.photoURL,
-            });
-
-            if (response.data.sessionToken) {
-              setSessionToken(response.data.sessionToken);
-              // Store session token in localStorage
-              localStorage.setItem('sessionToken', response.data.sessionToken);
-              // Set authorization header for future requests
-              apiService.defaults.headers.common[
-                'Authorization'
-              ] = `Bearer ${response.data.sessionToken}`;
-            }
-
-            if (response.data.user) {
-              setUserProfile(response.data.user);
-            }
-
-            // Navigate after successful auth exchange.
-            // If ProtectedRoute redirected user to login, it passes desired path in `location.state.from`.
-            const fromPath =
-              location.state?.from?.pathname ||
-              localStorage.getItem('postLoginRedirect') ||
-              '/dashboard';
-            // Remove stored redirect if present
-            localStorage.removeItem('postLoginRedirect');
-            // Only navigate if current location is /login or root to avoid breaking other flows
-            if (['/login', '/'].includes(location.pathname)) {
-              navigate(fromPath, { replace: true });
-            }
-          } catch (apiError) {
-            console.error('Backend auth error:', apiError);
-            setError(apiError.response?.data?.message || 'Authentication failed');
-          }
-        } else {
-          setUser(null);
-          setUserProfile(null);
-          setSessionToken(null);
-          localStorage.removeItem('sessionToken');
-          delete apiService.defaults.headers.common['Authorization'];
-        }
-      } catch (err) {
-        console.error('Auth error:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    return unsubscribe;
+    // no-op: social auth removed. hydration handled above via stored JWT.
   }, []);
+
+  const loginWithEmail = async (email, password) => {
+    setLoading(true);
+    try {
+      const res = await apiService.post('/auth/login', { email, password });
+      if (res.data?.sessionToken) {
+        setSessionToken(res.data.sessionToken);
+        localStorage.setItem('sessionToken', res.data.sessionToken);
+        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.sessionToken}`;
+      }
+      if (res.data?.user) setUserProfile(res.data.user);
+      return res.data;
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signupWithEmail = async (email, password, displayName) => {
+    setLoading(true);
+    try {
+      const res = await apiService.post('/auth/signup', { email, password, displayName });
+      if (res.data?.sessionToken) {
+        setSessionToken(res.data.sessionToken);
+        localStorage.setItem('sessionToken', res.data.sessionToken);
+        apiService.defaults.headers.common['Authorization'] = `Bearer ${res.data.sessionToken}`;
+      }
+      if (res.data?.user) setUserProfile(res.data.user);
+      return res.data;
+    } catch (err) {
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const logout = async () => {
     try {
-      await signOut(auth);
+      // Stateless JWT: simply clear client session
       setUser(null);
       setUserProfile(null);
       setSessionToken(null);
@@ -125,6 +94,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     logout,
+    loginWithEmail,
+    signupWithEmail,
     isAuthenticated: !!sessionToken,
   };
 

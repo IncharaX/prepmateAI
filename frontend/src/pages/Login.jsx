@@ -1,62 +1,31 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { useAuth } from '../hooks/useAuth';
 import { useLocation } from 'react-router-dom';
-import { auth, createGoogleProvider } from '../config/firebase';
-import { FiLoader } from 'react-icons/fi';
-import { FcGoogle } from 'react-icons/fc';
 import Header from '../components/Header';
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  const { loginWithEmail } = useAuth();
 
-  /**
-   * Handle Google Sign-In
-   */
-  const handleGoogleSignIn = async () => {
+  // Google/social sign-in removed to simplify auth; use email/password instead.
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
-      setError('');
-      setLoading(true);
-
-      const provider = createGoogleProvider();
-
-      try {
-        await signInWithPopup(auth, provider);
-        // onAuthStateChanged will handle backend exchange and navigation
-      } catch (popupError) {
-        // If popup is blocked or not supported, fallback to redirect flow
-        if (
-          popupError.code === 'auth/popup-blocked' ||
-          popupError.code === 'auth/operation-not-supported-in-this-environment' ||
-          popupError.code === 'auth/failed-precondition'
-        ) {
-          try {
-            // Persist intended redirect so it survives full-page redirect flows
-            const fromPath = location.state?.from?.pathname || '/dashboard';
-            localStorage.setItem('postLoginRedirect', fromPath);
-            await signInWithRedirect(auth, provider);
-            // Redirect will navigate away; handle post-redirect in auth context
-            return;
-          } catch (redirectError) {
-            console.error('Redirect sign-in failed:', redirectError);
-            setError(redirectError.message || 'Google sign-in failed');
-          }
-        } else {
-          throw popupError;
-        }
-      }
+      const data = await loginWithEmail(email, password);
+      const fromPath = location.state?.from?.pathname || localStorage.getItem('postLoginRedirect') || '/dashboard';
+      localStorage.removeItem('postLoginRedirect');
+      navigate(fromPath, { replace: true });
     } catch (err) {
-      console.error('Google sign-in error:', err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('Sign-in popup was closed');
-      } else if (err.code === 'auth/popup-blocked') {
-        setError('Sign-in popup was blocked. Please allow popups and try again.');
-      } else {
-        setError(err.message || 'Google sign-in failed');
-      }
+      setError(err.response?.data?.message || err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -86,24 +55,42 @@ const Login = () => {
               </div>
             )}
 
-            {/* Google Sign-In Button */}
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed mb-6"
-            >
-              {loading ? (
-                <>
-                  <FiLoader className="animate-spin" size={20} />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <FcGoogle size={20} />
-                  Sign in with Google
-                </>
-              )}
-            </button>
+            {/* Email login form */}
+            <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full border border-gray-200 rounded-lg py-2 px-3"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full border border-gray-200 rounded-lg py-2 px-3"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg"
+              >
+                {loading ? 'Signing in...' : 'Sign in'}
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Secure & Fast</span>
+              </div>
+            </div>
 
             {/* Divider */}
             <div className="relative mb-6">
@@ -167,12 +154,17 @@ const Login = () => {
 
             {/* Back to home */}
             <div className="mt-6 text-center pt-6 border-t border-gray-200">
-              <Link
-                to="/"
-                className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
-              >
-                ← Back to Home
-              </Link>
+              <div className="mb-3">
+                <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-medium text-sm mr-4">
+                  Don't have an account? Sign up
+                </Link>
+                <Link
+                  to="/"
+                  className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
+                >
+                  ← Back to Home
+                </Link>
+              </div>
             </div>
           </div>
 

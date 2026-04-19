@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../config/firebase';
+import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { auth, createGoogleProvider } from '../config/firebase';
 import { FiLoader } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import Header from '../components/Header';
@@ -19,12 +19,30 @@ const Login = () => {
       setError('');
       setLoading(true);
 
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
+      const provider = createGoogleProvider();
 
-      // Firebase will handle the auth state change
-      // AuthContext will automatically register/login user and set session token
-      navigate('/dashboard');
+      try {
+        await signInWithPopup(auth, provider);
+        navigate('/dashboard');
+      } catch (popupError) {
+        // If popup is blocked or not supported, fallback to redirect flow
+        if (
+          popupError.code === 'auth/popup-blocked' ||
+          popupError.code === 'auth/operation-not-supported-in-this-environment' ||
+          popupError.code === 'auth/failed-precondition'
+        ) {
+          try {
+            await signInWithRedirect(auth, provider);
+            // Redirect will navigate away; handle post-redirect in auth context
+            return;
+          } catch (redirectError) {
+            console.error('Redirect sign-in failed:', redirectError);
+            setError(redirectError.message || 'Google sign-in failed');
+          }
+        } else {
+          throw popupError;
+        }
+      }
     } catch (err) {
       console.error('Google sign-in error:', err);
       if (err.code === 'auth/popup-closed-by-user') {

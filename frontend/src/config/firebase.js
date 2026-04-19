@@ -4,6 +4,7 @@ import {
   connectAuthEmulator,
   setPersistence,
   browserLocalPersistence,
+  GoogleAuthProvider,
 } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -32,6 +33,16 @@ if (import.meta.env.DEV) {
   } catch (error) {
     // Emulator already connected or other error
   }
+}
+
+/**
+ * Return a configured Google provider for sign-in flows.
+ * Using `prompt: 'select_account'` avoids ambiguous account selection.
+ */
+export function createGoogleProvider() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return provider;
 }
 
 export default app;

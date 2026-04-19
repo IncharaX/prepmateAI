@@ -5,7 +5,7 @@ const helmet = require('helmet');
 const path = require('path');
 
 const connectDatabase = require('./config/database');
-const initializeFirebase = require('./config/firebaseConfig');
+const { initializeFirebase } = require('./config/firebaseConfig');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 
@@ -42,7 +42,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 let dbConnected = false;
 let firebaseInitialized = false;
 
-(async () => {
+async function startServer() {
   try {
     await connectDatabase();
     dbConnected = true;
@@ -51,12 +51,45 @@ let firebaseInitialized = false;
   }
 
   try {
-    initializeFirebase();
+    await initializeFirebase();
     firebaseInitialized = true;
   } catch (error) {
     console.error('✗ Firebase initialization failed:', error.message);
   }
-})();
+
+  const server = app.listen(PORT, () => {
+    console.log(`
+═══════════════════════════════════════════
+  🚀 PrepMate AI Server Running
+═══════════════════════════════════════════
+  Port: ${PORT}
+  Environment: ${process.env.NODE_ENV || 'development'}
+  Frontend: ${process.env.FRONTEND_URL || 'http://localhost:5173'}
+═══════════════════════════════════════════
+  `);
+  });
+
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', (error) => {
+    console.error('❌ Unhandled Rejection:', error);
+    server.close(() => process.exit(1));
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('⚠ SIGTERM received. Shutting down gracefully...');
+    server.close(() => {
+      console.log('✓ Server closed');
+      process.exit(0);
+    });
+  });
+}
+
+// Start server (init DB and Firebase first)
+startServer().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});
 
 // Health check route (no rate limit)
 app.get('/health', (req, res) => {
@@ -86,33 +119,5 @@ app.use((req, res) => {
 
 // Global error handler (must be last)
 app.use(errorHandler);
-
-// Start server
-const server = app.listen(PORT, () => {
-  console.log(`
-═══════════════════════════════════════════
-  🚀 PrepMate AI Server Running
-═══════════════════════════════════════════
-  Port: ${PORT}
-  Environment: ${process.env.NODE_ENV || 'development'}
-  Frontend: ${process.env.FRONTEND_URL || 'http://localhost:5173'}
-═══════════════════════════════════════════
-  `);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (error) => {
-  console.error('❌ Unhandled Rejection:', error);
-  server.close(() => process.exit(1));
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('⚠ SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('✓ Server closed');
-    process.exit(0);
-  });
-});
 
 module.exports = app;

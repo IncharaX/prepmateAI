@@ -1,56 +1,46 @@
 const admin = require('firebase-admin');
 
-const initializeFirebase = () => {
-  try {
-    // Check if Firebase is already initialized
-    if (admin.apps.length) {
-      return admin;
-    }
+/**
+ * Initialize Firebase Admin SDK with service account credentials.
+ * This function is idempotent and safe to call multiple times.
+ */
+function initializeFirebase() {
+  if (admin.apps.length) return admin;
 
-    const serviceAccount = {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    };
+  const serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY
+      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+      : undefined,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  };
 
-    // Validate required Firebase credentials
-    if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
-      throw new Error('Missing Firebase credentials in environment variables');
-    }
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-
-    console.log('✓ Firebase Admin SDK initialized successfully');
-    return admin;
-  } catch (error) {
-    console.error('✗ Firebase initialization error:', error.message);
-    throw error;
+  if (!serviceAccount.projectId || !serviceAccount.privateKey || !serviceAccount.clientEmail) {
+    throw new Error('Missing Firebase credentials in environment variables');
   }
-};
 
-// Export both the function and direct access to admin
-module.exports = initializeFirebase;
-module.exports.admin = admin;
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
 
-// Add helper to verify Firebase token
-module.exports.verifyToken = async (token) => {
-  try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    return decodedToken;
-  } catch (error) {
-    throw new Error(`Token verification failed: ${error.message}`);
-  }
-};
+  console.log('✓ Firebase Admin SDK initialized successfully');
+  return admin;
+}
 
-// Add helper to get user by UID
-module.exports.getFirebaseUser = async (uid) => {
-  try {
-    const user = await admin.auth().getUser(uid);
-    return user;
-  } catch (error) {
-    throw new Error(`Failed to get Firebase user: ${error.message}`);
-  }
+async function verifyToken(token) {
+  if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized');
+  return admin.auth().verifyIdToken(token);
+}
+
+async function getFirebaseUser(uid) {
+  if (!admin.apps.length) throw new Error('Firebase Admin SDK not initialized');
+  return admin.auth().getUser(uid);
+}
+
+module.exports = {
+  initializeFirebase,
+  admin,
+  verifyToken,
+  getFirebaseUser,
 };
 

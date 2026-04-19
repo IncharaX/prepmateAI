@@ -16,6 +16,13 @@ const schemas = {
     password: Joi.string().required(),
   }),
 
+  // Firebase token-based login/register
+  firebaseLogin: Joi.object({
+    firebaseToken: Joi.string().required(),
+    displayName: Joi.string().min(2).max(50).optional(),
+    photoURL: Joi.string().uri().optional(),
+  }),
+
   profileUpdate: Joi.object({
     displayName: Joi.string().min(2).max(50),
     domain: Joi.string().valid('Software Engineering', 'Marketing', 'Finance', 'HR'),

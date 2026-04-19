@@ -6,8 +6,9 @@ const { authLimiter } = require('../middleware/rateLimiter');
 const { validateRequest, sanitizeBody, schemas } = require('../middleware/validation');
 
 // Public routes
-router.post('/register', authLimiter, sanitizeBody, validateRequest(schemas.register), authController.registerOrLoginUser);
-router.post('/login', authLimiter, sanitizeBody, validateRequest(schemas.login), authController.registerOrLoginUser);
+// Both register and login endpoints accept a Firebase ID token when using Firebase auth flows
+router.post('/register', authLimiter, sanitizeBody, validateRequest(schemas.firebaseLogin), authController.registerOrLoginUser);
+router.post('/login', authLimiter, sanitizeBody, validateRequest(schemas.firebaseLogin), authController.registerOrLoginUser);
 
 // Protected routes
 router.get('/me', verifyJWTToken, authController.getCurrentUser);

@@ -1,33 +1,55 @@
-const { generate } = require("../services/aiService");
+const fs = require('fs');
+const pdf = require('pdf-parse');
+const mammoth = require('mammoth');
+const path = require('path');
+const aiService = require('../services/unifiedAIService');
 
-exports.extractSkills = async (req, res) => {
+/**
+ * Handle Resume Upload and Skill Extraction
+ */
+exports.uploadAndExtract = async (req, res, next) => {
     try {
-        const { resumeText } = req.body;
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded' });
+        }
 
-        const prompt = `
-Extract structured data from this resume.
+        const filePath = req.file.path;
+        const fileExt = path.extname(req.file.originalname).toLowerCase();
+        let extractedText = '';
 
-Return JSON format:
-{
-  "skills": [],
-  "experience_level": "",
-  "projects": []
-}
+        // 1. Extract text based on file type
+        if (fileExt === '.pdf') {
+            const dataBuffer = fs.readFileSync(filePath);
+            const data = await pdf(dataBuffer);
+            extractedText = data.text;
+        } else if (fileExt === '.docx' || fileExt === '.doc') {
+            const data = await mammoth.extractRawText({ path: filePath });
+            extractedText = data.value;
+        } else {
+            return res.status(400).json({ success: false, message: 'Unsupported file format' });
+        }
 
-Resume:
-${resumeText}
-`;
+        if (!extractedText.trim()) {
+            return res.status(400).json({ success: false, message: 'Could not extract text from resume' });
+        }
 
-        const result = await generate(prompt);
+        // 2. Send to Gemini for skill extraction
+        const analysis = await aiService.extractResumeSkills(extractedText);
 
-        res.json({
+        // 3. Cleanup: Delete the uploaded file after processing
+        // (Optional: keep if you want to store it, but for privacy/space we delete)
+        fs.unlinkSync(filePath);
+
+        res.status(200).json({
             success: true,
-            data: result,
+            data: {
+                skills: analysis.skills,
+                experience_level: analysis.experience_level,
+                domain: analysis.domain || 'Software Engineering'
+            }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message,
-        });
+        console.error('Resume Extraction Error:', error);
+        next(error);
     }
 };

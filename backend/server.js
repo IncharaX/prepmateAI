@@ -12,6 +12,7 @@ const { initializeFirebase } = require('./config/firebaseConfig');
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const interviewRoutes = require('./routes/interviewRoutes');
+const resumeRoutes = require('./routes/resumeRoutes');
 const userRoutes = require('./routes/userRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -103,6 +104,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/interviews', interviewRoutes);
+app.use('/api/resume', resumeRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/admin', adminRoutes);

@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FiMenu, FiX } from 'react-icons/fi';
 import { useAuth } from '../hooks/useAuth';
 
 const Header = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { isAuthenticated, userProfile, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
       await logout();
+      navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
     }

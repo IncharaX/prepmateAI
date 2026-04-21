@@ -9,8 +9,8 @@ const ProtectedRoute = ({ children }) => {
     return children;
   }
 
-  // If no token, redirect to signup
-  return <Navigate to="/signup" replace state={{ from: location }} />;
+  // If no token, redirect to login
+  return <Navigate to="/login" replace state={{ from: location }} />;
 };
 
 export default ProtectedRoute;

@@ -115,19 +115,57 @@ exports.getDashboardStats = async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    const recentInterviews = await Interview.find({ userId: user._id })
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .select('overallScore createdAt domain status');
+    // Fetch all completed interviews for accurate stats
+    const completedInterviews = await Interview.find({ userId: user._id, status: 'completed' })
+      .sort({ createdAt: -1 });
+
+    const totalSessions = completedInterviews.length;
+    let totalScore = 0;
+    
+    let totalContent = 0;
+    let totalCommunication = 0;
+    let totalConfidence = 0;
+    let answersCount = 0;
+
+    completedInterviews.forEach(interview => {
+      totalScore += (interview.overallScore || 0);
+      
+      if (interview.answers && interview.answers.length > 0) {
+        interview.answers.forEach(ans => {
+          totalContent += (ans.contentScore || 0);
+          totalCommunication += (ans.communicationScore || 0);
+          totalConfidence += (ans.confidenceScore || 0);
+          answersCount++;
+        });
+      }
+    });
+
+    const averageScore = totalSessions > 0 ? totalScore / totalSessions : 0;
+    const interviewReadinessScore = averageScore; // For now, mirror average score
+
+    const domainStrengths = {
+      contentScore: answersCount > 0 ? totalContent / answersCount : 0,
+      communicationScore: answersCount > 0 ? totalCommunication / answersCount : 0,
+      confidenceScore: answersCount > 0 ? totalConfidence / answersCount : 0,
+    };
+
+    // For the chart, we can use the top 10 recent completed interviews
+    const recentInterviews = completedInterviews.slice(0, 10).map(i => ({
+      _id: i._id,
+      overallScore: i.overallScore,
+      createdAt: i.createdAt,
+      domain: i.domain,
+      status: i.status
+    }));
 
     res.status(200).json({
       success: true,
       message: 'Dashboard stats retrieved',
       stats: {
-        interviewReadinessScore: user.interviewReadinessScore || 0,
-        totalSessions: user.totalSessions || 0,
-        averageScore: user.averageScore || 0,
-        domainStrengths: user.domainStrengths || {},
+        interviewReadinessScore,
+        totalSessions,
+        averageScore,
+        domainStrengths,
         recentInterviews,
       },
     });

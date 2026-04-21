@@ -3,12 +3,14 @@ const mongoose = require('mongoose');
 const connectDatabase = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI;
+    const dbName = process.env.DB_NAME || 'prepmate-ai';
 
     if (!mongoUri) {
       throw new Error('MONGODB_URI is not defined in environment variables');
     }
 
     await mongoose.connect(mongoUri, {
+      dbName,
       useNewUrlParser: true,
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
@@ -19,27 +21,25 @@ const connectDatabase = async () => {
 
     const db = mongoose.connection;
 
-    // Event listeners
     db.on('connected', () => {
-      console.log('✓ MongoDB connected successfully');
+      console.log(`MongoDB connected successfully (${dbName})`);
     });
 
     db.on('error', (error) => {
-      console.error('✗ MongoDB connection error:', error.message);
+      console.error('MongoDB connection error:', error.message);
     });
 
     db.on('disconnected', () => {
-      console.warn('⚠ MongoDB disconnected');
+      console.warn('MongoDB disconnected');
     });
 
     return db;
   } catch (error) {
-    console.error('✗ MongoDB initialization error:', error.message);
+    console.error('MongoDB initialization error:', error.message);
     throw error;
   }
 };
 
-// Graceful shutdown
 process.on('SIGINT', async () => {
   try {
     await mongoose.connection.close();
@@ -52,4 +52,3 @@ process.on('SIGINT', async () => {
 });
 
 module.exports = connectDatabase;
-
